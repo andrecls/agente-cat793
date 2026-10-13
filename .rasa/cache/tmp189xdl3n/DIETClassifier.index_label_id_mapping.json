@@ -1,0 +1,16 @@
+{
+  "0": "confirmar_entendimento",
+  "1": "informar_condicao_climatica",
+  "2": "informar_condicao_via",
+  "3": "informar_emergencia",
+  "4": "informar_emergencia_incendio",
+  "5": "informar_falha_critica",
+  "6": "informar_problema_mecanico",
+  "7": "informar_status_operacional",
+  "8": "saudacao_radio",
+  "9": "solicitar_abastecimento",
+  "10": "solicitar_apoio_pista",
+  "11": "solicitar_basculamento",
+  "12": "solicitar_carregamento",
+  "13": "solicitar_ultrapassagem"
+}
