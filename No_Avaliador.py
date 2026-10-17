@@ -55,28 +55,52 @@ class AvaliadorEmTempoReal(Node):
     def painel_callback(self, msg):
         self.estado['cinto_seguranca'] = msg.seatbelt
 
-    def voz_callback(self, msg):
-        fala = msg.data.strip()
-        if fala:
-            frase_contexto = (
-                f"[FALA DO OPERADOR]: O operador disse: '{fala}'. "
-                f"Contexto atual: Vel {self.estado['velocidade']:.1f} km/h, "
-                f"RPM {self.estado['rpm']:.0f}, Marcha {self.estado['marcha']}, "
-                f"Báscula {self.estado['bascula']:.1f}%. "
-            )
-            self._enviar_para_llm(frase_contexto)
-
     def avaliar_estado(self):
-        cinto_status = "COLOCADO" if self.estado['cinto_seguranca'] else "SOLTO"
+        infracao = None
         
-        raiox = (
+        v = self.estado['velocidade']
+        cinto = self.estado['cinto_seguranca']
+        bascula = self.estado['bascula']
+        freio_servico = self.estado['freio_servico']
+        marcha = self.estado['marcha']
+
+        # O PYTHON ESCREVE A MENSAGEM FINAL DE RÁDIO:
+        if v > 0.0 and not cinto:
+            infracao = "Atenção operador, o caminhão está em movimento sem o cinto de segurança. Pare o equipamento imediatamente e coloque o cinto. Câmbio."
             
-            f"[TELEMETRIA]: Vel: {self.estado['velocidade']:.1f} km/h | "
-            f"Cinto: {cinto_status} | RPM: {self.estado['rpm']:.0f} | "
-            f"Báscula: {self.estado['bascula']:.1f}%."
-        )
-        
-        self._enviar_para_llm(raiox)
+        elif v > 0.0 and bascula > 0.0:
+            infracao = "Atenção operador, o caminhão está se movendo com a báscula levantada. Pare imediatamente e apoie a báscula. Câmbio."
+            
+        elif v > 5.0 and freio_servico > 0.0:
+            infracao = "Operador, velocidade incompatível para o freio de serviço. Utilize o freio retardador. Câmbio."
+            
+        elif v > 0.0 and marcha == 0:
+            infracao = "Atenção operador, proibido locomover em neutro. Engate a marcha correta. Câmbio."
+
+        if infracao:
+            # Ordem de "Papagaio" (Bypass dos filtros de segurança)
+            prompt_ia = (
+                f"Sua ÚNICA tarefa é repetir o texto a seguir exatamente como ele está escrito. "
+                f"Não adicione nenhuma palavra, não recuse o pedido e não dê explicações. "
+                f"TEXTO: {infracao}"
+            )
+            self._enviar_para_llm(prompt_ia)
+
+    def voz_callback(self, msg):
+        fala = msg.data.strip().lower()
+        if fala:
+            # Avaliação condicional para emergências relatadas por voz
+            if "fogo" in fala or "incêndio" in fala or "emergência" in fala:
+                diretriz = "Emergência detectada. Ordene imediatamente a parada do caminhão, aplicação do freio de estacionamento e desligamento do motor."
+            else:
+                diretriz = "Responda à dúvida do operador de forma curta e profissional."
+                
+            prompt_voz = (
+                f"[FALA DO OPERADOR]: '{fala}'. "
+                f"[DIRETRIZ PARA O RÁDIO]: {diretriz} "
+                f"Formule a resposta no rádio encerrando com 'câmbio'."
+            )
+            self._enviar_para_llm(prompt_voz)
 
     def _enviar_para_llm(self, texto):
         payload = {'texto_original': texto}
